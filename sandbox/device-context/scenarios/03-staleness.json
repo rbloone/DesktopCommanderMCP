@@ -1,0 +1,20 @@
+{
+  "name": "Staleness and decay",
+  "description": "Work on CRM and legacy billing, then billing is moved away. New chats after 2 hours, 3 days, 2 weeks and 2 months show how ranking decays and missing folders disappear.",
+  "steps": [
+    { "session": "Day 0 · two projects", "client": "claude-code", "at": "2026-11-01T10:00:00Z", "calls": [
+      { "tool": "read_file", "args": { "path": "{home}/srv/legacy-billing/billing/views.py" } },
+      { "tool": "read_file", "args": { "path": "{home}/srv/crm/app/settings.py" } }
+    ]},
+    { "session": "Day 1 · CRM again", "client": "claude-code", "at": "2026-11-02T10:00:00Z", "calls": [
+      { "tool": "read_file", "args": { "path": "{home}/srv/crm/app/invoices/sender.py" } }
+    ]},
+    { "fs": { "rename": ["{home}/srv/legacy-billing", "{home}/srv/legacy-billing-archived"] } },
+    { "session": "+2 hours", "client": "chatgpt-sim", "at": "2026-11-02T12:00:00Z", "calls": [
+      { "tool": "get_device_context", "args": {}, "expect": { "inTop": ["{home}/srv/crm"], "contains": ["No longer on disk"] } }
+    ]},
+    { "session": "+3 days", "client": "chatgpt-sim", "at": "2026-11-05T12:00:00Z", "calls": [ { "tool": "get_device_context", "args": {} } ] },
+    { "session": "+2 weeks", "client": "chatgpt-sim", "at": "2026-11-16T12:00:00Z", "calls": [ { "tool": "get_device_context", "args": {} } ] },
+    { "session": "+2 months", "client": "chatgpt-sim", "at": "2027-01-02T12:00:00Z", "calls": [ { "tool": "get_device_context", "args": {} } ] }
+  ]
+}

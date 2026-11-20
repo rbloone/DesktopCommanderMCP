@@ -1,0 +1,36 @@
+{
+  "name": "New chat after two days of work",
+  "description": "Day 1: CRM invoices in Claude Code. Day 2: online shop in Claude Desktop, a quick look at the monorepo. Day 3: a new chat asks for the device context. Main scenario of the task.",
+  "steps": [
+    { "session": "Day 1 · CRM invoices", "client": "claude-code", "at": "2026-11-17T10:00:00Z", "calls": [
+      { "tool": "list_directory", "args": { "path": "{home}/srv", "depth": 1 } },
+      { "tool": "read_file", "args": { "path": "{home}/srv/crm/AGENTS.md" } },
+      { "tool": "read_file", "args": { "path": "{home}/srv/crm/app/invoices/sender.py" } },
+      { "tool": "read_file", "args": { "path": "{home}/srv/crm/app/settings.py" } },
+      { "tool": "edit_block", "args": { "file_path": "{home}/srv/crm/app/settings.py", "old_string": "RETRY_LIMIT = 3", "new_string": "RETRY_LIMIT = 5" } },
+      { "tool": "start_process", "args": { "command": "git -C \"{home}/srv/crm\" status", "timeout_ms": 10000 } },
+      { "tool": "start_process", "args": { "command": "cd \"{home}/srv/crm\" && pytest", "timeout_ms": 10000 } },
+      { "tool": "read_file", "args": { "path": "{home}/srv/crm/.env" } },
+      { "tool": "start_process", "args": { "command": "echo STRIPE_KEY={fake_stripe_key}", "timeout_ms": 5000 } }
+    ]},
+    { "restart": true },
+    { "session": "Day 2 · shop checkout", "client": "claude-desktop", "at": "2026-11-18T15:00:00Z", "calls": [
+      { "tool": "read_file", "args": { "path": "{home}/srv/shop/package.json" } },
+      { "tool": "read_file", "args": { "path": "{home}/srv/shop/src/checkout/payment.ts" } },
+      { "tool": "start_search", "args": { "path": "{home}/srv/shop", "pattern": "pay", "searchType": "content" } },
+      { "tool": "read_file", "args": { "path": "{home}/work/platform/packages/api/src/server.ts" } }
+    ]},
+    { "restart": true },
+    { "session": "Day 3 · new chat", "client": "chatgpt-sim", "at": "2026-11-19T09:00:00Z", "calls": [
+      { "tool": "get_device_context", "args": {}, "expect": {
+        "inTop": ["{home}/srv/crm", "{home}/srv/shop"],
+        "notInOutput": ["FAKECANARY", "sk_live_", ".env", "backup-crm", "crm-mobile", "IGNORE PREVIOUS"],
+        "maxTokens": 800
+      }},
+      { "tool": "get_device_context", "args": { "project": "{home}/srv/crm" }, "expect": {
+        "contains": ["settings.py", "sender.py", "AGENTS.md"],
+        "notInOutput": ["FAKECANARY", ".env"]
+      }}
+    ]}
+  ]
+}

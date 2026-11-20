@@ -237,6 +237,11 @@ export const GetRecentToolCallsArgsSchema = z.object({
   since: z.string().datetime().optional(),
 });
 
+export const GetDeviceContextArgsSchema = z.object({
+  project: z.string().optional(),
+  limit: z.number().int().min(1).max(20).optional(),
+});
+
 export const TrackUiEventArgsSchema = z.object({
   event: z.string().min(1).max(80),
   component: z.string().optional().default('file_preview'),
@@ -249,6 +254,7 @@ export const TrackUiEventArgsSchema = z.object({
  * with the tool definitions in server.ts.
  */
 export const toolArgSchemas: Record<string, z.ZodTypeAny> = {
+  get_device_context: GetDeviceContextArgsSchema,
   get_config: GetConfigArgsSchema,
   set_config_value: SetConfigValueArgsSchema,
   read_file: ReadFileArgsSchema,
