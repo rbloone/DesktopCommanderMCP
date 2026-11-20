@@ -141,6 +141,21 @@ export function maybeAppendDeviceContext(name: string, args: any, result: any, m
     try {
         if (!ep || !isNudgeEnabled() || isUiCall(args) || name === 'get_device_context' || !result || !Array.isArray(result.content)) return result;
         if (result.structuredContent) return result; // keep widget/structured results untouched
+        // A': models already call get_recent_tool_calls at the start of a chat ("what did we do?").
+        // Put the compact project list on top of that answer: same moment, a fraction of the tokens.
+        if (name === 'get_recent_tool_calls') {
+            if (ep.general || ep.contextTool || result.isError) return result;
+            const block = renderCompact(rank(readJournal(), now()), { now: now(), limit: 5, toolAvailable: isDeviceContextToolEnabled() });
+            if (!block) return result;
+            ep.general = true;
+            if (debugOn()) appendLines(debugFile(), [{ t: new Date().toISOString(), event: 'decision', tool: name, case: 'history', reason: 'history tool called', episode: ep.key, appended: 'general', text: block }]);
+            capture('server_device_context_injected', { trigger_tool: name, case: 'history', block_type: 'general', chars: block.length });
+            const content = [...result.content];
+            const first = content[0];
+            if (first && first.type === 'text') content[0] = { ...first, text: `${block}\n---\n\n${first.text ?? ''}` };
+            else content.unshift({ type: 'text', text: block });
+            return { ...result, content };
+        }
         const cls = classify(name, args, result);
         let block: string | null = null;
         let type: 'general' | 'targeted' | null = null;

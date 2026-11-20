@@ -1,4 +1,4 @@
-// Unit test for src/device-context (A + B). Run after npm run build:  node sandbox/device-context/device-context.test.mjs
+// Unit test for src/device-context (A, A-prime, B). Run after npm run build:  node sandbox/device-context/device-context.test.mjs
 import fs from 'fs'; import os from 'os'; import path from 'path'; import { execSync } from 'child_process';
 const H = fs.mkdtempSync(path.join(os.tmpdir(), 'dch-'));
 process.env.DC_DEVICE_CONTEXT_HOME = H; process.env.DESKTOP_COMMANDER_DEVICE_CONTEXT = 'both'; process.env.DESKTOP_COMMANDER_DEVICE_CONTEXT_DEBUG = '1';
@@ -81,6 +81,12 @@ process.env.DESKTOP_COMMANDER_DEVICE_CONTEXT = 'tool'; fresh();
 check('mode=tool -> no append', dc.maybeAppendDeviceContext('list_directory', { path: H }, orig, {}) === orig);
 process.env.DESKTOP_COMMANDER_DEVICE_CONTEXT = 'off'; fresh();
 check('mode=off -> no append', dc.maybeAppendDeviceContext('list_directory', { path: H }, orig, {}) === orig);
+console.log("A' (history tool)"); process.env.DESKTOP_COMMANDER_DEVICE_CONTEXT = 'both';
+fresh(); { const hr = { content: [{ type: 'text', text: 'Recent tool calls: ...' }] };
+  const o = dc.maybeAppendDeviceContext('get_recent_tool_calls', { maxResults: 40 }, hr, {});
+  check('get_recent_tool_calls -> block prepended', o.content[0].text.startsWith('[Desktop Commander device context') && o.content[0].text.endsWith('Recent tool calls: ...'), o.content[0].text);
+  const r2 = call('list_directory', { path: H }); check('then ls ~ -> nothing (already shown)', kind(r2.block) === 'none');
+  const o2 = dc.maybeAppendDeviceContext('get_recent_tool_calls', { maxResults: 40 }, hr, {}); check('second history call -> untouched', o2 === hr); }
 console.log('\n--- sample general block ---'); process.env.DESKTOP_COMMANDER_DEVICE_CONTEXT = 'both'; fresh();
 console.log(call('list_directory', { path: H }).block.replaceAll(H, '~'));
 console.log(`\n${fails ? fails + ' FAILED' : 'all passed'}`); process.exit(fails ? 1 : 0);
