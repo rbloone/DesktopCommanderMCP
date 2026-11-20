@@ -49,7 +49,33 @@ function appendLines(file: string, rows: object[]): void {
         .catch(() => { /* never break a tool call */ });
 }
 
+/**
+ * First run: build the journal from Desktop Commander's existing tool history, so users who already
+ * worked with DC get context right away. Runs once (the journal file then exists).
+ */
+let backfillDone = false;
+function ensureJournal(): void {
+    if (backfillDone) return;
+    backfillDone = true;
+    try {
+        if (fs.existsSync(journalFile())) return;
+        const hist = path.join(dir(), 'tool-history.jsonl');
+        if (!fs.existsSync(hist)) return;
+        const rows: JournalRow[] = [];
+        for (const line of fs.readFileSync(hist, 'utf8').split('\n')) {
+            if (!line) continue;
+            let rec: any; try { rec = JSON.parse(line); } catch { continue; }
+            if (!rec?.toolName || !rec.timestamp || rec.output?.isError || isUiCall(rec.arguments)) continue;
+            rows.push(...observeEvent({ t: rec.timestamp, tool: rec.toolName, args: rec.arguments, origin: 'local' }, { home: home(), excludeRoots }).journal);
+        }
+        fs.mkdirSync(dir(), { recursive: true });
+        fs.writeFileSync(journalFile(), rows.map((r) => JSON.stringify(r)).join('\n') + (rows.length ? '\n' : ''), { flag: 'wx' });
+        capture('server_device_context_backfill', { rows: rows.length });
+    } catch { /* another process won the race, or no history */ }
+}
+
 function readJournal(): JournalRow[] {
+    ensureJournal();
     let text = '';
     try { text = fs.readFileSync(journalFile(), 'utf8'); } catch { return []; }
     if (text.length > MAX_JOURNAL_BYTES) text = text.slice(text.length - MAX_JOURNAL_BYTES); // newest 2 MB is plenty
@@ -71,6 +97,7 @@ const chatIdOf = (meta: any): string | null => {
 export function observeToolCall(name: string, args: any, result: any, isRemote: boolean): void {
     if (!isEnabled() || name === 'get_device_context' || isUiCall(args) || result?.isError) return;
     try {
+        ensureJournal();
         const { journal, dropped } = observeEvent({ t: now().toISOString(), tool: name, args, origin: isRemote ? 'remote' : 'local' },
             { home: home(), excludeRoots });
         appendLines(journalFile(), journal);
